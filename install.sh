@@ -873,23 +873,6 @@ install_mysql(){
     judge "==============="
     sleep 2
     mysqlpasswd=$(cat /dev/urandom | head -1 | md5sum | head -c 8)
-
-    touch /usr/bin/expect
-    cat >/usr/bin/expect <<EOF
-    spawn mysql_secure_installation
-    expect "password for root" {send "\r"}
-    expect "root password" {send "Y\r"}
-    expect "New password" {send "$mysqlpasswd\r"}
-    expect "Re-enter new password" {send "$mysqlpasswd\r"}
-    expect "Remove anonymous users" {send "Y\r"}
-    expect "Disallow root login remotely" {send "Y\r"}
-    expect "database and access" {send "Y\r"}
-    expect "Reload privilege tables" {send "Y\r"}
-    spawn mysql -u root -p
-    expect "Enter password" {send "$mysqlpasswd\r"}
-    expect "mysql" {send "create database wordpress_db;\r"}
-    expect "mysql" {send "exit\r"}
-    EOF
 }
 
 config_php(){
@@ -928,6 +911,8 @@ install_wp(){
     echo
     echo
     sleep 1
+    rm -rf /usr/share/nginx/html
+    mkdir -p /usr/share/nginx/html
     cd /usr/share/nginx/html
     mv /usr/share/wordpresstemp/latest-zh_CN.zip ./
     unzip latest-zh_CN.zip
