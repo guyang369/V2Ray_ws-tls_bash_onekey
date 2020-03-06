@@ -615,7 +615,7 @@ vmess_qr_config_tls_ws() {
     cat >$v2ray_qr_config_file <<-EOF
 {
   "v": "2",
-  "ps": "gy_${domain}",
+  "ps": "wulabing_${domain}",
   "add": "${domain}",
   "port": "${port}",
   "id": "${UUID}",
@@ -633,7 +633,7 @@ vmess_qr_config_h2() {
     cat >$v2ray_qr_config_file <<-EOF
 {
   "v": "2",
-  "ps": "gy_${domain}",
+  "ps": "wulabing_${domain}",
   "add": "${domain}",
   "port": "${port}",
   "id": "${UUID}",
