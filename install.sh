@@ -874,7 +874,8 @@ install_mysql(){
     sleep 2
     mysqlpasswd=$(cat /dev/urandom | head -1 | md5sum | head -c 8)
 
-    /usr/bin/expect << EOF
+    touch /usr/bin/expect
+    cat >/usr/bin/expect <<EOF
     spawn mysql_secure_installation
     expect "password for root" {send "\r"}
     expect "root password" {send "Y\r"}
