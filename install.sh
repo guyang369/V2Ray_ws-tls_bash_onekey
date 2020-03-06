@@ -335,159 +335,6 @@ nginx_exist_check() {
     fi
 }
 
-install_php7(){
-
-    judge "==============="
-    judge " 1.安装必要软件"
-    judge "==============="
-    sleep 1
-    ${INS} -y install epel-release
-    sed -i "0,/enabled=0/s//enabled=1/" /etc/yum.repos.d/epel.repo
-    ${INS} -y install  wget unzip vim tcl expect curl libtool perl-core zlib-devel gcc pcre*
-    echo
-    echo
-    judge "=========="
-    judge "2.安装PHP7"
-    judge "=========="
-    sleep 1
-    rpm -Uvh https://mirror.webtatic.com/yum/el7/webtatic-release.rpm
-    ${INS} -y install php70w php70w-mysql php70w-gd php70w-xml php70w-fpm
-    service php-fpm start
-    chkconfig php-fpm on
-    if [ `${INS} list installed | grep php70 | wc -l` -ne 0 ]; then
-        echo
-    	judge "【checked】 PHP7安装成功"
-        echo
-        echo
-        sleep 2
-        php_status=1
-    fi
-}
-
-install_mysql(){
-
-    judge "==============="
-    judge "  3.安装MySQL"
-    judge "==============="
-    sleep 1
-    wget http://repo.mysql.com/mysql-community-release-el7-5.noarch.rpm
-    rpm -ivh mysql-community-release-el7-5.noarch.rpm
-    ${INS} -y install mysql-server
-    systemctl enable mysqld.service
-    systemctl start  mysqld.service
-    if [ `${INS} list installed | grep mysql-community | wc -l` -ne 0 ]; then
-    	judge "【checked】 MySQL安装成功"
-		echo
-		echo
-		sleep 2
-		mysql_status=1
-    fi
-    echo
-    echo
-    judge "==============="
-    judge "  4.配置MySQL"
-    judge "==============="
-    sleep 2
-    mysqlpasswd=$(cat /dev/urandom | head -1 | md5sum | head -c 8)
-
-    /usr/bin/expect << EOF
-    spawn mysql_secure_installation
-    expect "password for root" {send "\r"}
-    expect "root password" {send "Y\r"}
-    expect "New password" {send "$mysqlpasswd\r"}
-    expect "Re-enter new password" {send "$mysqlpasswd\r"}
-    expect "Remove anonymous users" {send "Y\r"}
-    expect "Disallow root login remotely" {send "Y\r"}
-    expect "database and access" {send "Y\r"}
-    expect "Reload privilege tables" {send "Y\r"}
-    spawn mysql -u root -p
-    expect "Enter password" {send "$mysqlpasswd\r"}
-    expect "mysql" {send "create database wordpress_db;\r"}
-    expect "mysql" {send "exit\r"}
-    EOF
-}
-
-config_php(){
-
-    echo
-    judge "===================="
-    judge " 6.配置php和php-fpm"
-    judge "===================="
-    echo
-    echo
-    sleep 1
-    sed -i "s/upload_max_filesize = 2M/upload_max_filesize = 20M/;" /etc/php.ini
-    sed -i "s/pm.start_servers = 5/pm.start_servers = 3/;s/pm.min_spare_servers = 5/pm.min_spare_servers = 3/;s/pm.max_spare_servers = 35/pm.max_spare_servers = 8/;" /etc/php-fpm.d/www.conf
-    systemctl restart php-fpm.service
-    systemctl restart nginx.service
-
-}
-
-
-download_wp(){
-
-    mkdir /usr/share/wordpresstemp
-    cd /usr/share/wordpresstemp/
-    wget https://cn.wordpress.org/latest-zh_CN.zip
-    if [ ! -f "/usr/share/wordpresstemp/latest-zh_CN.zip" ]; then
-    	judge "从cn官网下载wordpress失败，尝试从github下载……"
-		wget https://github.com/atrandys/wordpress/raw/master/latest-zh_CN.zip
-    fi
-    if [ ! -f "/usr/share/wordpresstemp/latest-zh_CN.zip" ]; then
-		judge "我它喵的从github下载wordpress也失败了，请尝试用下面的方式手动安装……"
-		judge "从wordpress官网下载包然后命名为latest-zh_CN.zip，新建目录/usr/share/wordpresstemp/，上传到此目录下，重新执行安装脚本即可"
-		exit 1
-    fi
-}
-
-install_wp(){
-
-    judge "===================="
-    judge "  7.安装wordpress"
-    judge "===================="
-    echo
-    echo
-    sleep 1
-    cd /usr/share/nginx/html
-    mv /usr/share/wordpresstemp/latest-zh_CN.zip ./
-    unzip latest-zh_CN.zip
-    mv wordpress/* ./
-    cp wp-config-sample.php wp-config.php
-    judge "===================="
-    judge "  8.配置wordpress"
-    judge "===================="sss
-    echo
-    echo
-    sleep 1
-    sed -i "s/database_name_here/wordpress_db/;s/username_here/root/;s/password_here/$mysqlpasswd/;" /usr/share/nginx/html/wp-config.php
-    echo "define('FS_METHOD', "direct");" >> /usr/share/nginx/html/wp-config.php
-    chmod -R 777 /usr/share/nginx/html/wp-content
-    judge "==========================================================="
-    judge " WordPress服务端配置已完成，请打开浏览器访问您的域名进行前台配置"
-    judge " 数据库密码等信息参考文件：/usr/share/nginx/html/wp-config.php"
-    judge "==========================================================="
-}
-
-uninstall_wp(){
-    judge "============================================="
-    judge "你的wordpress和v2ray数据将全部丢失！！你确定要卸载吗？"
-    judge -s -n1 -p "按回车键开始卸载，按ctrl+c取消"
-    ${INS} remove -y php70w php70w-mysql php70w-gd php70w-xml php70w-fpm mysql
-    rm -rf /usr/share/nginx/html/*
-    rm -rf /var/lib/mysql
-    rm -rf /usr/share/mysql
-	/etc/nginx/sbin/nginx -s stop
-    systemctl stop v2ray.service
-    systemctl disable v2ray.service
-    rm -rf /usr/bin/v2ray
-    rm -rf /etc/v2ray
-    rm -rf /etc/nginx
-	rm -rf /etc/rc.d/init.d/autov2ray
-    judge "=========="
-    judge " 卸载完成，如需重新安装建议重启后进行"
-    judge "=========="
-}
-
 nginx_install() {
     #    if [[ -d "/etc/nginx" ]];then
     #        rm -rf /etc/nginx
@@ -971,6 +818,155 @@ judge_mode() {
         fi
     fi
 }
+
+
+install_php7(){
+
+    judge "==============="
+    judge " 1.安装必要软件"
+    judge "==============="
+    sleep 1
+    ${INS} -y install epel-release
+    sed -i "0,/enabled=0/s//enabled=1/" /etc/yum.repos.d/epel.repo
+    ${INS} -y install  wget unzip vim tcl expect curl libtool perl-core zlib-devel gcc pcre*
+    echo
+    echo
+    judge "=========="
+    judge "2.安装PHP7"
+    judge "=========="
+    sleep 1
+    rpm -Uvh https://mirror.webtatic.com/yum/el7/webtatic-release.rpm
+    ${INS} -y install php70w php70w-mysql php70w-gd php70w-xml php70w-fpm
+    service php-fpm start
+    chkconfig php-fpm on
+    if [ `${INS} list installed | grep php70 | wc -l` -ne 0 ]; then
+        echo
+    	judge "【checked】 PHP7安装成功"
+        echo
+        echo
+        sleep 2
+        php_status=1
+    fi
+}
+
+install_mysql(){
+    judge "==============="
+    judge "  3.安装MySQL"
+    judge "==============="
+    sleep 1
+    wget http://repo.mysql.com/mysql-community-release-el7-5.noarch.rpm
+    rpm -ivh mysql-community-release-el7-5.noarch.rpm
+    ${INS} -y install mysql-server
+    systemctl enable mysqld.service
+    systemctl start  mysqld.service
+    if [ `${INS} list installed | grep mysql-community | wc -l` -ne 0 ]; then
+    	judge "【checked】 MySQL安装成功"
+		echo
+		echo
+		sleep 2
+		mysql_status=1
+    fi
+    echo
+    echo
+    judge "==============="
+    judge "  4.配置MySQL"
+    judge "==============="
+    sleep 2
+    mysqlpasswd=$(cat /dev/urandom | head -1 | md5sum | head -c 8)
+
+    /usr/bin/expect << EOF
+    spawn mysql_secure_installation
+    expect "password for root" {send "\r"}
+    expect "root password" {send "Y\r"}
+    expect "New password" {send "$mysqlpasswd\r"}
+    expect "Re-enter new password" {send "$mysqlpasswd\r"}
+    expect "Remove anonymous users" {send "Y\r"}
+    expect "Disallow root login remotely" {send "Y\r"}
+    expect "database and access" {send "Y\r"}
+    expect "Reload privilege tables" {send "Y\r"}
+    spawn mysql -u root -p
+    expect "Enter password" {send "$mysqlpasswd\r"}
+    expect "mysql" {send "create database wordpress_db;\r"}
+    expect "mysql" {send "exit\r"}
+    EOF
+}
+
+config_php(){
+    echo
+    judge "===================="
+    judge " 6.配置php和php-fpm"
+    judge "===================="
+    echo
+    echo
+    sleep 1
+    sed -i "s/upload_max_filesize = 2M/upload_max_filesize = 20M/;" /etc/php.ini
+    sed -i "s/pm.start_servers = 5/pm.start_servers = 3/;s/pm.min_spare_servers = 5/pm.min_spare_servers = 3/;s/pm.max_spare_servers = 35/pm.max_spare_servers = 8/;" /etc/php-fpm.d/www.conf
+    systemctl restart php-fpm.service
+    systemctl restart nginx.service
+}
+
+download_wp(){
+    mkdir /usr/share/wordpresstemp
+    cd /usr/share/wordpresstemp/
+    wget https://cn.wordpress.org/latest-zh_CN.zip
+    if [ ! -f "/usr/share/wordpresstemp/latest-zh_CN.zip" ]; then
+    	judge "从cn官网下载wordpress失败，尝试从github下载……"
+		wget https://github.com/atrandys/wordpress/raw/master/latest-zh_CN.zip
+    fi
+    if [ ! -f "/usr/share/wordpresstemp/latest-zh_CN.zip" ]; then
+		judge "我它喵的从github下载wordpress也失败了，请尝试用下面的方式手动安装……"
+		judge "从wordpress官网下载包然后命名为latest-zh_CN.zip，新建目录/usr/share/wordpresstemp/，上传到此目录下，重新执行安装脚本即可"
+		exit 1
+    fi
+}
+
+install_wp(){
+    judge "===================="
+    judge "  7.安装wordpress"
+    judge "===================="
+    echo
+    echo
+    sleep 1
+    cd /usr/share/nginx/html
+    mv /usr/share/wordpresstemp/latest-zh_CN.zip ./
+    unzip latest-zh_CN.zip
+    mv wordpress/* ./
+    cp wp-config-sample.php wp-config.php
+    judge "===================="
+    judge "  8.配置wordpress"
+    judge "===================="sss
+    echo
+    echo
+    sleep 1
+    sed -i "s/database_name_here/wordpress_db/;s/username_here/root/;s/password_here/$mysqlpasswd/;" /usr/share/nginx/html/wp-config.php
+    echo "define('FS_METHOD', "direct");" >> /usr/share/nginx/html/wp-config.php
+    chmod -R 777 /usr/share/nginx/html/wp-content
+    judge "==========================================================="
+    judge " WordPress服务端配置已完成，请打开浏览器访问您的域名进行前台配置"
+    judge " 数据库密码等信息参考文件：/usr/share/nginx/html/wp-config.php"
+    judge "==========================================================="
+}
+
+uninstall_wp(){
+    judge "============================================="
+    judge "你的wordpress和v2ray数据将全部丢失！！你确定要卸载吗？"
+    judge -s -n1 -p "按回车键开始卸载，按ctrl+c取消"
+    ${INS} remove -y php70w php70w-mysql php70w-gd php70w-xml php70w-fpm mysql
+    rm -rf /usr/share/nginx/html/*
+    rm -rf /var/lib/mysql
+    rm -rf /usr/share/mysql
+	/etc/nginx/sbin/nginx -s stop
+    systemctl stop v2ray.service
+    systemctl disable v2ray.service
+    rm -rf /usr/bin/v2ray
+    rm -rf /etc/v2ray
+    rm -rf /etc/nginx
+	rm -rf /etc/rc.d/init.d/autov2ray
+    judge "=========="
+    judge " 卸载完成，如需重新安装建议重启后进行"
+    judge "=========="
+}
+
 install_v2ray_ws_tls() {
     is_root
     check_system
