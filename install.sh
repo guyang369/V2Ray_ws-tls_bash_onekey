@@ -529,14 +529,8 @@ nginx_conf_add() {
         ssl_ciphers           TLS13-AES-256-GCM-SHA384:TLS13-CHACHA20-POLY1305-SHA256:TLS13-AES-128-GCM-SHA256:TLS13-AES-128-CCM-8-SHA256:TLS13-AES-128-CCM-SHA256:EECDH+CHACHA20:EECDH+CHACHA20-draft:EECDH+ECDSA+AES128:EECDH+aRSA+AES128:RSA+AES128:EECDH+ECDSA+AES256:EECDH+aRSA+AES256:RSA+AES256:EECDH+ECDSA+3DES:EECDH+aRSA+3DES:RSA+3DES:!MD5;
         server_name           serveraddr.com;
         index index.php index.html index.htm;
-        #root  /home/wwwroot/3DCEList;
         root /usr/share/nginx/html;
         error_page 400 = /400.html;
-        location ~ \.php$ {
-            fastcgi_pass 127.0.0.1:9000;
-            fastcgi_param SCRIPT_FILENAME \$document_root\$fastcgi_script_name;
-            include fastcgi_params;
-        }
         location /ray/
         {
         proxy_redirect off;
@@ -548,15 +542,11 @@ nginx_conf_add() {
         proxy_set_header Connection "upgrade";
         proxy_set_header Host \$http_host;
         }
-        location / {
-           try_files \$uri \$uri/ /index.php?\$args;
-        }
 }
     server {
         listen 80;
         server_name serveraddr.com;
-        rewrite ^(.*)$  https://\$host\$1 permanent;
-        #return 301 https://use.shadowsocksr.win\$request_uri;
+        return 301 https://use.shadowsocksr.win\$request_uri;
     }
 EOF
 
